@@ -29,7 +29,7 @@ pipeline {
         stage('Deploy (Containerized)') {
             steps {
                 dir("${WORKSPACE}") {
-                    sh 'docker-compose up -d'
+                    sh 'docker-compose up -d --build'  // ← CHANGED THIS LINE
                 }
             }
         }
