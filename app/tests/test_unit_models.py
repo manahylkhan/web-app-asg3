@@ -20,3 +20,4 @@ def test_message_model(app):
         db.session.commit()
         assert Message.query.count() == 1
         assert Message.query.first().text == 'hello'
+        db.drop_all()
