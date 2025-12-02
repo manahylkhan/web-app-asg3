@@ -6,7 +6,7 @@ POSTGRES = {
     'pw': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
     'db': os.environ.get('POSTGRES_DB', 'appdb'),
     'host': os.environ.get('POSTGRES_HOST', 'db'),
-    'port': os.environ.get('POSTGRES_PORT', '5432'),
+    'port': int(os.environ.get('POSTGRES_PORT', 5432)),
 }
 
 
