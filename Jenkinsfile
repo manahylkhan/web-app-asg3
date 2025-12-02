@@ -23,7 +23,7 @@ pipeline {
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install flake8
-                    flake8 app/ || true
+                    flake8 app/ --exit-zero --count --statistics --show-source || true
                 '''
             }
         }
