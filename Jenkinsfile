@@ -2,60 +2,100 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+
+        /* -------------------------
+           1) CHECKOUT CODE
+           ------------------------- */
+        stage('Checkout Code') {
             steps {
                 checkout scm
+                echo "Code successfully pulled from GitHub"
             }
         }
 
-        stage('Lint') {
+        /* -------------------------
+           2) CODE LINTING
+           ------------------------- */
+        stage('Code Linting') {
             steps {
-                echo 'Skipping Lint stage — using Docker for all dependencies'
+                echo "Running flake8 linting..."
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install flake8
+                    flake8 app/
+                '''
             }
         }
 
-        stage('Unit Tests') {
+        /* -------------------------
+           3) CODE BUILD (Docker Image)
+           ------------------------- */
+        stage('Code Build') {
             steps {
-                echo 'Skipping Unit Tests stage — using Docker for all dependencies'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
+                echo "Building Docker image for Flask app..."
                 sh 'docker build -t myapp:latest .'
             }
         }
 
-        stage('Deploy (Containerized)') {
+        /* -------------------------
+           4) UNIT TESTING (pytest)
+           ------------------------- */
+        stage('Unit Testing') {
             steps {
-                dir("${WORKSPACE}") {
-                    sh 'docker-compose up -d --build'  // ← CHANGED THIS LINE
-                }
+                echo "Running unit tests using pytest..."
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install -r requirements.txt
+                    pytest app/tests -v
+                '''
             }
         }
 
-        stage('Selenium Tests') {
+        /* -------------------------
+           5) Containerized Deployment
+           ------------------------- */
+        stage('Containerized Deployment') {
             steps {
-                echo 'Running Selenium tests'
+                echo "Deploying application using docker-compose..."
+                sh 'docker-compose down || true'
+                sh 'docker-compose up -d --build'
+            }
+        }
+
+        /* -------------------------
+           6) Selenium/E2E Testing
+           ------------------------- */
+        stage('Selenium Testing') {
+            steps {
+                echo "Running Selenium/End-to-End tests..."
                 dir('selenium-tests') {
+                    // Build selenium test container
                     sh 'docker build -t selenium-tests .'
-                    sh 'docker run --rm --network selenium-asg_default selenium-tests || true'
+
+                    // Run tests inside same docker-compose network
+                    sh 'docker run --rm --network selenium-asg_default selenium-tests'
                 }
             }
         }
     }
 
+    /* -------------------------
+       POST BUILD CLEANUP
+       ------------------------- */
     post {
         always {
-            dir("${WORKSPACE}") {
-                sh 'docker-compose down || true'
-            }
+            echo "Cleaning up containers..."
+            sh 'docker-compose down || true'
         }
+
         success {
-            echo 'Pipeline completed successfully!'
+            echo "Pipeline completed successfully!"
         }
+
         failure {
-            echo 'Pipeline failed!'
+            echo "Pipeline failed. Please check logs."
         }
     }
 }
